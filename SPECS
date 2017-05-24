@@ -1,0 +1,45 @@
+ --- Server specification ---
+
+INCOMING MESSAGE
+    POST <url>
+    <payload>
+
+        if url="/key": payload is a 32 byte octet stream (AES256 key)
+        if url="/id": payload is a 64 byte octet stream (SHA512 hash)
+
+
+OUTGOING MESSAGE
+    <status>
+    <payload>
+
+        if status=200|201:
+            if url="/key": payload is a 64 byte octet stream (SHA512 hash)
+            if url="/id": payload is a 32 byte octet stream (AES256 key)
+
+    Possible error status codes:
+        400 Bad Request
+        401 Unauthorized
+        402 Payment Required
+        406 Not Acceptable
+        429 Too Many Requests
+        500 Internal Server Error
+
+
+
+CRYPTO PATH
+    /key:
+        AES256-key  ->  SHA512-keyhash  => obj.id       (obj: item of the JSON store)
+                    ->  AES256-enckey   => obj.key
+            passphrase -^                               (passphrase given as stdin)
+
+    /id:
+        SHA512-id   ->      [compare to keyhash]
+        obj.key     =>  AES256-enckey   ->  AES256-key  ->  SHA512-keyhash
+            passphrase -^
+        [if keyhash =/= id: passphrase wrong, unauthorized!]
+        [else: return status]
+
+Note: To use the passphrase as AES256 key, it has to be 32 bytes large.
+    E.g. make a SHA256 hash from the stdin
+
+---
